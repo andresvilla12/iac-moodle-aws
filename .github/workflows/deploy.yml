@@ -35,10 +35,11 @@ jobs:
       - name: Obtener IP Pública
         id: get_ip
         run: |
-          # Terraform guarda la IP en un archivo de texto
-          terraform output -raw public_ip > ip.txt
-          # Leemos el archivo y lo guardamos en la variable de GitHub
-          echo "ip=$(cat ip.txt)" >> "$GITHUB_OUTPUT"
+          # Busca la IP pública directamente en el archivo de estado de Terraform
+          IP=$(grep -o '"public_ip": *"[^"]*"' terraform.tfstate | head -n 1 | sed 's/.*"public_ip": *"//;s/"//g')
+          
+          echo "La IP extraída es: $IP"
+          echo "ip=$IP" >> "$GITHUB_OUTPUT"
 
   # TRABAJO 2: Desplegar la aplicación Moodle usando Docker Compose
   deploy_app:
