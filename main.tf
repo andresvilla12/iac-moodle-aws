@@ -67,7 +67,7 @@ resource "aws_security_group" "moodle_sg" {
 # 4. Crear la instancia EC2
 resource "aws_instance" "moodle_server" {
   ami           = data.aws_ami.ubuntu.id
-  instance_type = "t2.micro" # Capa gratuita
+  instance_type = "t3.micro" # Capa gratuita
   key_name      = "moodle-key" # 
   
   vpc_security_group_ids = [aws_security_group.moodle_sg.id]
