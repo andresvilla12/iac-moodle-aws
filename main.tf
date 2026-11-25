@@ -28,7 +28,7 @@ data "aws_ami" "ubuntu" {
 
 # 3. Crear el Security Group (Cortafuegos)
 resource "aws_security_group" "moodle_sg" {
-  name        = "moodle-sg"
+  name = "moodle-sg-v2"
   description = "Permitir trafico SSH, HTTP y HTTPS"
 
   # SSH (Para que GitHub Actions pueda conectarse)
