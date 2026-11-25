@@ -26,42 +26,9 @@ data "aws_ami" "ubuntu" {
   owners = ["099720109477"] # ID oficial de Canonical (Ubuntu)
 }
 
-# 3. Crear el Security Group (Cortafuegos)
-resource "aws_security_group" "moodle_sg" {
-  name = "moodle-sg-v2"
-  description = "Permitir trafico SSH, HTTP y HTTPS"
-
-  # SSH (Para que GitHub Actions pueda conectarse)
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # HTTP (Para acceder a Moodle desde el navegador)
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  
-  # HTTPS (Por si luego agregamos SSL)
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # Permitir todo el tráfico de salida
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+# 3. Buscar el Security Group existente
+data "aws_security_group" "moodle_sg" {
+  name = "moodle-sg" # Usamos el nombre original que ya existe en AWS
 }
 
 # 4. Crear la instancia EC2
@@ -70,7 +37,7 @@ resource "aws_instance" "moodle_server" {
   instance_type = "t3.micro" # Capa gratuita
   key_name      = "moodle-key" # 
   
-  vpc_security_group_ids = [aws_security_group.moodle_sg.id]
+  vpc_security_group_ids = [data.aws_security_group.moodle_sg.id]
 
   # Script que se ejecuta al encender la máquina: Instala Docker y Docker Compose
   user_data = <<-EOF
