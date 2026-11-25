@@ -1,0 +1,71 @@
+name: 'Terraform & Moodle Deploy'
+
+on:
+  push:
+    branches:
+      - main # Se activa cuando haces push a la rama main
+
+jobs:
+  # TRABAJO 1: Crear la infraestructura en AWS con Terraform
+  terraform:
+    name: 'Terraform Apply'
+    runs-on: ubuntu-latest
+    outputs:
+      public_ip: ${{ steps.get_ip.outputs.ip }}
+    
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v3
+
+      - name: Configurar Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Init
+        run: terraform init
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Obtener IP Pública
+        id: get_ip
+        run: echo "ip=$(terraform output -raw public_ip)" >> $GITHUB_OUTPUT
+
+  # TRABAJO 2: Desplegar la aplicación Moodle usando Docker Compose
+  deploy_app:
+    name: 'Deploy Moodle App'
+    needs: terraform # Espera a que termine el trabajo de Terraform
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del repositorio de la App
+        uses: actions/checkout@v3
+        with:
+          # ⚠️ CAMBIA ESTO: Pon tu usuario de GitHub y el nombre del repo de la app
+          repository: andresvilla12/app-moodle-docker 
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Copiar docker-compose.yml al servidor
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ needs.terraform.outputs.public_ip }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "docker-compose.yml"
+          target: "/home/ubuntu/"
+
+      - name: Levantar Moodle con Docker Compose
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ needs.terraform.outputs.public_ip }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /home/ubuntu
+            # Reemplaza la URL con la IP pública actual
+            sed -i "s|TU_IP_PUBLICA|http://${{ needs.terraform.outputs.public_ip }}|g" docker-compose.yml
+            sudo docker-compose up -d
